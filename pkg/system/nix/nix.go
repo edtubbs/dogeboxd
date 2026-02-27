@@ -18,10 +18,6 @@ type nixManager struct {
 	pups   dogeboxd.PupManager
 }
 
-var runNixCommand = func(cmd *exec.Cmd) error {
-	return cmd.Run()
-}
-
 func NewNixManager(config dogeboxd.ServerConfig, pups dogeboxd.PupManager) dogeboxd.NixManager {
 	return nixManager{
 		config: config,
@@ -334,57 +330,27 @@ func (nm nixManager) RebuildBoot(log dogeboxd.SubLogger) error {
 
 func (nm nixManager) Rebuild(log dogeboxd.SubLogger) error {
 	cmdArgs := []string{"_dbxroot", "nix", "rs"}
-	cacheFirstEnabled := isNixCacheFirstEnabled()
-	cacheFirstFailed := false
+	cacheOnlyCmdArgs := append(append([]string{}, cmdArgs...), "--max-jobs", "0")
 
-	if cacheFirstEnabled {
-		log.Log("Starting cache-first nix build (substituter-only)")
-		cacheOnlyCmdArgs := appendCacheOnlyArgs(cmdArgs)
-		if err := nm.runRebuildCommand(log, cacheOnlyCmdArgs); err != nil {
-			cacheFirstFailed = true
-			log.Log("Cache-first nix build failed, retrying with local builds enabled")
-		} else {
-			log.Log("Cache-first nix build succeeded")
-			return nil
-		}
+	log.Log("Starting cache-first nix build (substituter-only)")
+	cacheOnlyCmd := exec.Command("sudo", cacheOnlyCmdArgs...)
+	log.LogCmd(cacheOnlyCmd)
+	if err := cacheOnlyCmd.Run(); err == nil {
+		log.Log("Cache-first nix build succeeded")
+		return nil
 	}
 
-	if err := nm.runRebuildCommand(log, cmdArgs); err != nil {
+	log.Log("Cache-first nix build failed, retrying with local builds enabled")
+	cmd := exec.Command("sudo", cmdArgs...)
+	log.LogCmd(cmd)
+	if err := cmd.Run(); err != nil {
 		log.Errf("Error executing nix rebuild: %v\n", err)
 		return err
 	}
 
-	if cacheFirstFailed {
-		log.Log("Fallback nix build succeeded")
-	}
+	log.Log("Fallback nix build succeeded")
 
 	return nil
-}
-
-func (nm nixManager) runRebuildCommand(log dogeboxd.SubLogger, cmdArgs []string) error {
-	cmd := exec.Command("sudo", cmdArgs...)
-	log.LogCmd(cmd)
-	return runNixCommand(cmd)
-}
-
-func isNixCacheFirstEnabled() bool {
-	value := strings.TrimSpace(os.Getenv("DOGEBOXD_NIX_CACHE_FIRST"))
-	if value == "" {
-		return true
-	}
-
-	switch strings.ToLower(value) {
-	case "0", "false", "no", "off":
-		return false
-	default:
-		return true
-	}
-}
-
-func appendCacheOnlyArgs(cmdArgs []string) []string {
-	cacheOnlyCmdArgs := append([]string{}, cmdArgs...)
-	cacheOnlyCmdArgs = append(cacheOnlyCmdArgs, "--max-jobs", "0")
-	return cacheOnlyCmdArgs
 }
 
 func (nm nixManager) NewPatch(log dogeboxd.SubLogger) dogeboxd.NixPatch {
