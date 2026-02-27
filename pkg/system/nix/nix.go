@@ -330,7 +330,9 @@ func (nm nixManager) RebuildBoot(log dogeboxd.SubLogger) error {
 
 func (nm nixManager) Rebuild(log dogeboxd.SubLogger) error {
 	cmdArgs := []string{"_dbxroot", "nix", "rs"}
-	cacheOnlyCmdArgs := append(append([]string{}, cmdArgs...), "--max-jobs", "0")
+	cacheOnlyCmdArgs := make([]string, len(cmdArgs), len(cmdArgs)+2)
+	copy(cacheOnlyCmdArgs, cmdArgs)
+	cacheOnlyCmdArgs = append(cacheOnlyCmdArgs, "--max-jobs", "0")
 
 	log.Log("Starting cache-first nix build (substituter-only)")
 	cacheOnlyCmd := exec.Command("sudo", cacheOnlyCmdArgs...)
