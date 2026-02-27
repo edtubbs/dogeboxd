@@ -339,7 +339,7 @@ func (nm nixManager) Rebuild(log dogeboxd.SubLogger) error {
 
 	if cacheFirstEnabled {
 		log.Log("Starting cache-first nix build (substituter-only)")
-		cacheOnlyCmdArgs := append(append([]string{}, cmdArgs...), "--max-jobs", "0")
+		cacheOnlyCmdArgs := appendCacheOnlyArgs(cmdArgs)
 		if err := nm.runRebuildCommand(log, cacheOnlyCmdArgs); err != nil {
 			cacheFirstFailed = true
 			log.Log("Cache-first nix build failed, retrying with local builds enabled")
@@ -379,6 +379,12 @@ func isNixCacheFirstEnabled() bool {
 	default:
 		return true
 	}
+}
+
+func appendCacheOnlyArgs(cmdArgs []string) []string {
+	cacheOnlyCmdArgs := append([]string{}, cmdArgs...)
+	cacheOnlyCmdArgs = append(cacheOnlyCmdArgs, "--max-jobs", "0")
+	return cacheOnlyCmdArgs
 }
 
 func (nm nixManager) NewPatch(log dogeboxd.SubLogger) dogeboxd.NixPatch {

@@ -2,6 +2,7 @@ package nix
 
 import (
 	"errors"
+	"fmt"
 	"os/exec"
 	"testing"
 
@@ -15,14 +16,26 @@ type testSubLogger struct {
 }
 
 func (l *testSubLogger) Log(msg string)                    { l.logs = append(l.logs, msg) }
-func (l *testSubLogger) Logf(msg string, a ...any)         { l.logs = append(l.logs, msg) }
+func (l *testSubLogger) Logf(msg string, a ...any)         { l.logs = append(l.logs, fmt.Sprintf(msg, a...)) }
 func (l *testSubLogger) Err(msg string)                    { l.errs = append(l.errs, msg) }
-func (l *testSubLogger) Errf(msg string, a ...any)         { l.errs = append(l.errs, msg) }
+func (l *testSubLogger) Errf(msg string, a ...any)         { l.errs = append(l.errs, fmt.Sprintf(msg, a...)) }
 func (l *testSubLogger) Progress(p int) dogeboxd.SubLogger { return l }
 func (l *testSubLogger) LogCmd(cmd *exec.Cmd)              { l.cmds = append(l.cmds, cmd.Args) }
 
+func hasCacheOnlyArgs(args []string) bool {
+	for i := 0; i < len(args)-1; i++ {
+		if args[i] == "--max-jobs" && args[i+1] == "0" {
+			return true
+		}
+	}
+	return false
+}
+
 func TestRebuildCacheFirstSuccess(t *testing.T) {
 	t.Setenv("DOGEBOXD_NIX_CACHE_FIRST", "")
+	if !isNixCacheFirstEnabled() {
+		t.Fatal("expected cache-first to be enabled by default")
+	}
 	logger := &testSubLogger{}
 	nm := nixManager{}
 
@@ -38,7 +51,7 @@ func TestRebuildCacheFirstSuccess(t *testing.T) {
 		t.Fatalf("expected 1 rebuild command, got %d", len(logger.cmds))
 	}
 
-	if got := logger.cmds[0]; len(got) < 6 || got[4] != "--max-jobs" || got[5] != "0" {
+	if got := logger.cmds[0]; !hasCacheOnlyArgs(got) {
 		t.Fatalf("expected cache-first args with --max-jobs 0, got %v", got)
 	}
 }
@@ -67,11 +80,11 @@ func TestRebuildCacheFirstFallback(t *testing.T) {
 		t.Fatalf("expected 2 rebuild commands, got %d", len(logger.cmds))
 	}
 
-	if got := logger.cmds[0]; len(got) < 6 || got[4] != "--max-jobs" || got[5] != "0" {
+	if got := logger.cmds[0]; !hasCacheOnlyArgs(got) {
 		t.Fatalf("expected first command to be cache-only, got %v", got)
 	}
 
-	if got := logger.cmds[1]; len(got) != 4 {
+	if got := logger.cmds[1]; hasCacheOnlyArgs(got) {
 		t.Fatalf("expected fallback command without cache-only args, got %v", got)
 	}
 }
@@ -93,7 +106,7 @@ func TestRebuildCacheFirstDisabled(t *testing.T) {
 		t.Fatalf("expected 1 rebuild command, got %d", len(logger.cmds))
 	}
 
-	if got := logger.cmds[0]; len(got) != 4 {
+	if got := logger.cmds[0]; hasCacheOnlyArgs(got) {
 		t.Fatalf("expected standard rebuild command when cache-first is disabled, got %v", got)
 	}
 }
