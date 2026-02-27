@@ -20,6 +20,7 @@ var rsCmd = &cobra.Command{
 			fmt.Fprintf(os.Stderr, "Error getting rebuild command: %v\n", err)
 			os.Exit(1)
 		}
+		rebuildArgs = append(rebuildArgs, args...)
 
 		execCmd := exec.Command(rebuildCommand, rebuildArgs...)
 		execCmd.Stdout = os.Stdout
