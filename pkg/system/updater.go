@@ -752,14 +752,20 @@ func waitForContainerRunning(serviceName string, timeout time.Duration, log doge
 	for time.Now().Before(deadline) {
 		// Check if service is active and running
 		cmd := exec.Command("systemctl", "is-active", serviceName)
-		output, _ := cmd.CombinedOutput()
+		output, cmdErr := cmd.Output()
 		state := strings.TrimSpace(string(output))
+		if cmdErr != nil && state == "" {
+			state = "unknown"
+		}
 
 		if state == "active" {
 			// Double-check it's actually running (not just activated)
 			cmd = exec.Command("systemctl", "show", serviceName, "--property=SubState")
-			output, _ = cmd.CombinedOutput()
+			output, cmdErr = cmd.Output()
 			subState := strings.TrimSpace(strings.TrimPrefix(string(output), "SubState="))
+			if cmdErr != nil && subState == "" {
+				subState = "unknown"
+			}
 
 			if subState == "running" {
 				log.Logf("Container is active and running")
