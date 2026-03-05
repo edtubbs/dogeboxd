@@ -37,6 +37,12 @@ func (t api) getStoreList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// A manual store refresh should also refresh installed-pup update info
+	// so "upgrade available" state is visible without toggling enabled state.
+	if forceRefresh {
+		t.dbx.AddAction(dogeboxd.CheckPupUpdates{PupID: ""})
+	}
+
 	response := map[string]StoreListSourceEntry{}
 
 	for k, entry := range available {
