@@ -39,6 +39,12 @@ func (t api) connectNetwork(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if _, ok := t.sm.Get().Network.CurrentNetwork.(dogeboxd.SelectedNetworkWifi); ok && t.config.Recovery {
+		// In recovery setup flow, keep AP alive until final bootstrap.
+		sendResponse(w, map[string]bool{"success": true})
+		return
+	}
+
 	if err := nixPatch.Apply(); err != nil {
 		log.Printf("Failed to apply nix patch: %+v", err)
 		sendErrorResponse(w, http.StatusInternalServerError, "Failed to apply nix patch")
