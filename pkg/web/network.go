@@ -39,27 +39,13 @@ func (t api) connectNetwork(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	localIP := ""
-	if ip, ipErr := t.dbx.NetworkManager.GetLocalIP(); ipErr != nil {
-		log.Printf("Failed to determine local IP for network configuration response: %+v", ipErr)
-	} else if ip != nil {
-		localIP = ip.String()
-	}
-
-	if _, ok := t.sm.Get().Network.CurrentNetwork.(dogeboxd.SelectedNetworkWifi); ok && t.config.Recovery {
-		// In recovery setup flow, keep AP alive until final bootstrap so the
-		// client can receive this response and continue setup steps.
-		sendResponse(w, map[string]any{"success": true, "localIP": localIP, "applied": false})
-		return
-	}
-
 	if err := nixPatch.Apply(); err != nil {
 		log.Printf("Failed to apply nix patch: %+v", err)
 		sendErrorResponse(w, http.StatusInternalServerError, "Failed to apply nix patch")
 		return
 	}
 
-	sendResponse(w, map[string]any{"success": true, "localIP": localIP, "applied": true})
+	sendResponse(w, map[string]bool{"success": true})
 }
 
 func (t api) setPendingNetwork(w http.ResponseWriter, r *http.Request) {
