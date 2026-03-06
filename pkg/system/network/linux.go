@@ -240,57 +240,12 @@ func (t NetworkManagerLinux) TryConnect(nixPatch dogeboxd.NixPatch) error {
 }
 
 func (t NetworkManagerLinux) GetLocalIP() (net.IP, error) {
-	state := t.sm.Get().Network
-
-	interfaceCandidates := []string{}
-	switch network := state.CurrentNetwork.(type) {
-	case dogeboxd.SelectedNetworkEthernet:
-		interfaceCandidates = append(interfaceCandidates, network.Interface)
-	case dogeboxd.SelectedNetworkWifi:
-		interfaceCandidates = append(interfaceCandidates, network.Interface)
+	conn, err := net.Dial("udp", "dogecoin.org:443")
+	if err != nil {
+		return nil, err
 	}
+	defer conn.Close()
 
-	// If we don't have a current network interface yet, try all active interfaces.
-	if len(interfaceCandidates) == 0 {
-		allInterfaces, err := net.Interfaces()
-		if err != nil {
-			return nil, err
-		}
-		for _, iface := range allInterfaces {
-			if iface.Flags&net.FlagUp == 0 || iface.Flags&net.FlagLoopback != 0 {
-				continue
-			}
-			interfaceCandidates = append(interfaceCandidates, iface.Name)
-		}
-	}
-
-	for _, ifaceName := range interfaceCandidates {
-		iface, err := net.InterfaceByName(ifaceName)
-		if err != nil {
-			continue
-		}
-		addrs, err := iface.Addrs()
-		if err != nil {
-			continue
-		}
-		for _, addr := range addrs {
-			var ip net.IP
-			switch v := addr.(type) {
-			case *net.IPNet:
-				ip = v.IP
-			case *net.IPAddr:
-				ip = v.IP
-			}
-			if ip == nil || ip.IsLoopback() {
-				continue
-			}
-			ip = ip.To4()
-			if ip == nil {
-				continue
-			}
-			return ip, nil
-		}
-	}
-
-	return nil, errors.New("could not determine local IP address")
+	localAddr := conn.LocalAddr().(*net.UDPAddr)
+	return localAddr.IP, nil
 }
