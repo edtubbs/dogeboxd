@@ -39,13 +39,34 @@ func (t api) connectNetwork(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	localIP := ""
+	if ip, ipErr := t.dbx.NetworkManager.GetLocalIP(); ipErr != nil {
+		log.Printf("Failed to determine local IP before network switch: %+v", ipErr)
+	} else if ip != nil {
+		localIP = ip.String()
+	}
+
+	if _, ok := t.sm.Get().Network.CurrentNetwork.(dogeboxd.SelectedNetworkWifi); ok {
+		sendResponse(w, map[string]any{"success": true, "localIP": localIP})
+		if flusher, ok := w.(http.Flusher); ok {
+			flusher.Flush()
+		}
+
+		go func() {
+			if err := nixPatch.Apply(); err != nil {
+				log.Printf("Failed to apply nix patch in background: %+v", err)
+			}
+		}()
+		return
+	}
+
 	if err := nixPatch.Apply(); err != nil {
 		log.Printf("Failed to apply nix patch: %+v", err)
 		sendErrorResponse(w, http.StatusInternalServerError, "Failed to apply nix patch")
 		return
 	}
 
-	sendResponse(w, map[string]bool{"success": true})
+	sendResponse(w, map[string]any{"success": true, "localIP": localIP})
 }
 
 func (t api) setPendingNetwork(w http.ResponseWriter, r *http.Request) {
