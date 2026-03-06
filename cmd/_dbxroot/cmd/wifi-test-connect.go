@@ -70,6 +70,7 @@ func testWifiConnect(iface string, ssid string, password string) error {
 	}
 
 	id := string(networkID)
+	id = strings.TrimSpace(id)
 
 	setSSIDCmd := exec.Command("wpa_cli", "-i", iface, "set_network", id, "ssid", fmt.Sprintf("\"%s\"", ssid))
 	err = setSSIDCmd.Run()
@@ -106,11 +107,16 @@ func testWifiConnect(iface string, ssid string, password string) error {
 
 	status := string(statusOutput)
 
-	if strings.Contains(status, "wpa_state=COMPLETED") {
+	if isWifiConnectionCompleted(status) {
 		log.Printf("Successfully connected to WiFi network: %s", ssid)
 	} else {
 		log.Printf("Failed to connect to WiFi network: %s. Current status: %s", ssid, status)
+		return fmt.Errorf("failed to connect to WiFi network: %s", ssid)
 	}
 
 	return nil
+}
+
+func isWifiConnectionCompleted(status string) bool {
+	return strings.Contains(status, "wpa_state=COMPLETED")
 }
