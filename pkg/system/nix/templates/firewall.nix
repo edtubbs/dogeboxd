@@ -4,6 +4,9 @@
   networking.firewall.enable = true;
 
   networking.firewall.allowedTCPPorts = [
+    # Allow dogeboxd API on LAN.
+    8080
+
     # Allow dogeboxd to bind to 80 for the pup-router.
     # TODO: Make this an explicit firewall rule only available to pup cide.
     80
