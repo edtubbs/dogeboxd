@@ -107,7 +107,7 @@ func testWifiConnect(iface string, ssid string, password string) error {
 
 	status := string(statusOutput)
 
-	if isWifiConnectionCompleted(status) {
+	if isWiFiConnectionCompleted(status) {
 		log.Printf("Successfully connected to WiFi network: %s", ssid)
 	} else {
 		log.Printf("Failed to connect to WiFi network: %s. Current status: %s", ssid, status)
@@ -117,6 +117,6 @@ func testWifiConnect(iface string, ssid string, password string) error {
 	return nil
 }
 
-func isWifiConnectionCompleted(status string) bool {
+func isWiFiConnectionCompleted(status string) bool {
 	return strings.Contains(status, "wpa_state=COMPLETED")
 }
