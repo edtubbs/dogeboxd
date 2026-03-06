@@ -46,17 +46,10 @@ func (t api) connectNetwork(w http.ResponseWriter, r *http.Request) {
 		localIP = ip.String()
 	}
 
-	if _, ok := t.sm.Get().Network.CurrentNetwork.(dogeboxd.SelectedNetworkWifi); ok {
-		sendResponse(w, map[string]any{"success": true, "localIP": localIP})
-		if flusher, ok := w.(http.Flusher); ok {
-			flusher.Flush()
-		}
-
-		go func() {
-			if err := nixPatch.Apply(); err != nil {
-				log.Printf("Failed to apply nix patch in background: %+v", err)
-			}
-		}()
+	if _, ok := t.sm.Get().Network.CurrentNetwork.(dogeboxd.SelectedNetworkWifi); ok && t.config.Recovery {
+		// In recovery setup flow, keep AP alive until final bootstrap so the
+		// client can receive this response and continue setup steps.
+		sendResponse(w, map[string]any{"success": true, "localIP": localIP, "applied": false})
 		return
 	}
 
@@ -66,7 +59,7 @@ func (t api) connectNetwork(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sendResponse(w, map[string]any{"success": true, "localIP": localIP})
+	sendResponse(w, map[string]any{"success": true, "localIP": localIP, "applied": true})
 }
 
 func (t api) setPendingNetwork(w http.ResponseWriter, r *http.Request) {
