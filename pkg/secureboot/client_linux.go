@@ -227,6 +227,8 @@ func (c *Client) invoke(function uint32, params []teeParam) (uint32, uint32, err
 	paramSize := int(unsafe.Sizeof(teeParam{}))
 	totalSize := headerSize + len(params)*paramSize
 
+	// The ioctl buffer layout is:
+	// [ teeInvokeArg header ][ teeParam array... ]
 	buf := make([]byte, totalSize)
 	arg := (*teeInvokeArg)(unsafe.Pointer(&buf[0]))
 	arg.Func = function
@@ -307,7 +309,7 @@ func openTEEDevice() (int, error) {
 
 		if v.ImplID != teeImplIDOPTEE {
 			_ = unix.Close(fd)
-			lastErr = fmt.Errorf("%s is not an OP-TEE device (impl_id=%d)", p, v.ImplID)
+			lastErr = fmt.Errorf("%s is not an OP-TEE device (ImplID=%d)", p, v.ImplID)
 			continue
 		}
 

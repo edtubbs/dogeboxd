@@ -81,7 +81,7 @@ var secureBootEnableCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		fmt.Println("secure boot enable command completed")
+		fmt.Println("secure boot enabled command completed")
 	},
 }
 
@@ -94,23 +94,4 @@ func init() {
 	secureBootEnableCmd.Flags().Int("key-size", 2048, "RSA key size in bits (2048 or 4096)")
 	secureBootEnableCmd.Flags().Bool("yes", false, "Confirm irreversible fuse operations")
 	secureBootEnableCmd.MarkFlagRequired("hash")
-
-	secureBootEnableCmd.PreRunE = func(cmd *cobra.Command, args []string) error {
-		hashInput, err := cmd.Flags().GetString("hash")
-		if err != nil {
-			return err
-		}
-
-		_, err = secureboot.ParseHash(hashInput)
-		if err != nil {
-			return err
-		}
-
-		keySize, err := cmd.Flags().GetInt("key-size")
-		if err != nil {
-			return err
-		}
-
-		return secureboot.ValidateKeySize(keySize)
-	}
 }
