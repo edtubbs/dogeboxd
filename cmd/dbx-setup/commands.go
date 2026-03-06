@@ -450,20 +450,8 @@ func finalizeSetupCmd(m setupModel) tea.Cmd {
 			"useFoundationPupBinaryCache": m.binaryCachePups,
 		}
 
-		body, err = json.Marshal(bootstrapPayload)
-		if err != nil {
-			return setupCompleteMsg{err: fmt.Errorf("failed to marshal bootstrap payload: %w", err)}
-		}
-
-		req, err = http.NewRequest(http.MethodPost, "http://dogeboxd/system/bootstrap", bytes.NewReader(body))
-		if err != nil {
-			return setupCompleteMsg{err: fmt.Errorf("failed to create bootstrap request: %w", err)}
-		}
-		req.Header.Set("Content-Type", "application/json")
-
-		resp, _ = client.Do(req)
-		if resp != nil {
-			defer resp.Body.Close()
+		if err := sendBootstrapRequest(client, "http://dogeboxd/system/bootstrap", bootstrapPayload); err != nil {
+			return setupCompleteMsg{err: err}
 		}
 
 		sendProgress(7) // Bootstrap complete
@@ -471,6 +459,32 @@ func finalizeSetupCmd(m setupModel) tea.Cmd {
 
 		return setupCompleteMsg{err: nil}
 	}
+}
+
+func sendBootstrapRequest(client *http.Client, endpoint string, payload map[string]interface{}) error {
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal bootstrap payload: %w", err)
+	}
+
+	req, err := http.NewRequest(http.MethodPost, endpoint, bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("failed to create bootstrap request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to complete bootstrap request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		respBody, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("failed to bootstrap system: status %d: %s", resp.StatusCode, strings.TrimSpace(string(respBody)))
+	}
+
+	return nil
 }
 
 // Helper functions for safe type conversion
