@@ -57,6 +57,12 @@ Pups are containerized applications that run in the Dogebox Runtime Environment 
 - Network isolation ensures Pups can only communicate through defined interfaces
 - File system access is limited to designated storage directories
 
+### OP-TEE Secure Boot PTA Client
+
+For Rockchip secure-boot provisioning via the OP-TEE secure boot PTA (`rk_secure_boot`), Linux userspace is optional as a client (this can be done pre-OS in bootloader stages).
+
+If Dogebox-WG needs an OS-side client in Linux userspace, this repository (`dogeboxd`) is the right ownership boundary for it (for example, via `dogeboxd` or its privileged helper) because it already orchestrates host-level, privileged system operations.
+
 **Please note:** Although pups are isolated, we provide no guarantees that a malicious pup cannot attack your host or other pups. Therefor, we recommend only installing pups from known-good sources.
 
 ## License
@@ -75,4 +81,3 @@ Dogeboxd is developed by the Dogecoin Foundation and the Dogebox community. Spec
 ---
 
 **Note**: This project is under active development. Features and APIs may change. Please refer to the official documentation for the most up-to-date information.
-
