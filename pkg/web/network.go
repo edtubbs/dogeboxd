@@ -41,7 +41,7 @@ func (t api) connectNetwork(w http.ResponseWriter, r *http.Request) {
 
 	localIP := ""
 	if ip, ipErr := t.dbx.NetworkManager.GetLocalIP(); ipErr != nil {
-		log.Printf("Failed to determine local IP before network switch: %+v", ipErr)
+		log.Printf("Failed to determine local IP for network configuration response: %+v", ipErr)
 	} else if ip != nil {
 		localIP = ip.String()
 	}
