@@ -30,18 +30,23 @@ func (t api) testConnectNetwork(w http.ResponseWriter, r *http.Request) {
 func (t api) connectNetwork(w http.ResponseWriter, r *http.Request) {
 	nixPatch := t.nix.NewPatch(dogeboxd.NewConsoleSubLogger("internal", "set network"))
 
+	if _, ok := t.sm.Get().Network.PendingNetwork.(dogeboxd.SelectedNetworkWifi); ok && t.config.Recovery {
+		if err := t.dbx.NetworkManager.TestConnect(); err != nil {
+			log.Printf("Failed to connect to network: %+v", err)
+			sendErrorResponse(w, http.StatusInternalServerError, "Failed to connect to network")
+			return
+		}
+		// In recovery setup flow, keep AP alive until final bootstrap.
+		sendResponse(w, map[string]bool{"success": true})
+		return
+	}
+
 	err := t.dbx.NetworkManager.TryConnect(nixPatch)
 	// Chances are we'll never actually get here, because you'll probably be disconnected
 	// from the box once (if) it changes networks, and your connection will break.
 	if err != nil {
 		log.Printf("Failed to connect to network: %+v", err)
 		sendErrorResponse(w, http.StatusInternalServerError, "Failed to connect to network")
-		return
-	}
-
-	if _, ok := t.sm.Get().Network.CurrentNetwork.(dogeboxd.SelectedNetworkWifi); ok && t.config.Recovery {
-		// In recovery setup flow, keep AP alive until final bootstrap.
-		sendResponse(w, map[string]bool{"success": true})
 		return
 	}
 
