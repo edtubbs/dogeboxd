@@ -8,7 +8,7 @@
     8080
 
     # Allow dogeboxd to bind to 80 for the pup-router.
-    # TODO: Make this an explicit firewall rule only available to pup cide.
+    # TODO: Make this an explicit firewall rule only available to pup code.
     80
 
     {{ if .SSH_ENABLED }}
