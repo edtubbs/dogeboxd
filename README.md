@@ -63,6 +63,11 @@ For Rockchip secure-boot provisioning via the OP-TEE secure boot PTA (`rk_secure
 
 If Dogebox-WG needs an OS-side client in Linux userspace, this repository (`dogeboxd`) is the right ownership boundary for it (for example, via `dogeboxd` or its privileged helper) because it already orchestrates host-level, privileged system operations.
 
+This repository now includes secure-boot client commands:
+
+- `dbx secure-boot info`
+- `dbx secure-boot enable --hash <64-hex-char-sha256> --key-size <2048|4096> --yes`
+
 **Please note:** Although pups are isolated, we provide no guarantees that a malicious pup cannot attack your host or other pups. Therefore, we recommend only installing pups from known-good sources.
 
 ## License
