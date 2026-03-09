@@ -11,6 +11,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const wpaSupplicantStartupDelay = 1000 * time.Millisecond
+
 var wifiTestCmd = &cobra.Command{
 	Use:   "wifi-test",
 	Short: "wifi-test",
@@ -58,7 +60,7 @@ func testWifiConnect(iface string, ssid string, password string) error {
 		}
 
 		// Wait for wpa_supplicant to setup its things
-		time.Sleep(1000 * time.Millisecond)
+		time.Sleep(wpaSupplicantStartupDelay)
 		log.Printf("Started wpa_supplicant for interface: %s", iface)
 	} else {
 		log.Printf("wpa_supplicant already running for interface: %s", iface)
