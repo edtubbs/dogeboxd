@@ -40,25 +40,29 @@ func init() {
 }
 
 func testWifiConnect(iface string, ssid string, password string) error {
-	cmd := exec.Command("wpa_supplicant",
-		"-i", iface,
-		"-C", "/var/run/wpa_supplicant",
-		"-B",
-		"-f", "/var/log/wpa_supplicant.log",
-		"-D", "nl80211,wext",
-	)
+	if !isWPASupplicantRunning(iface) {
+		cmd := exec.Command("wpa_supplicant",
+			"-i", iface,
+			"-C", "/var/run/wpa_supplicant",
+			"-B",
+			"-f", "/var/log/wpa_supplicant.log",
+			"-D", "nl80211,wext",
+		)
 
-	// Start wpa_supplicant
-	err := cmd.Start()
-	if err != nil {
-		log.Printf("failed to start wpa_supplicant for interface %s, %+v", iface, err)
-		return err
+		// Start wpa_supplicant
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			log.Printf("failed to start wpa_supplicant for interface %s, %+v", iface, err)
+			log.Printf("%s", string(output))
+			return err
+		}
+
+		// Wait for wpa_supplicant to setup it's things
+		time.Sleep(1000 * time.Millisecond)
+		log.Printf("Started wpa_supplicant for interface: %s", iface)
+	} else {
+		log.Printf("wpa_supplicant already running for interface: %s", iface)
 	}
-
-	// Wait for wpa_supplicant to setup it's things
-	time.Sleep(1000 * time.Millisecond)
-
-	log.Printf("Started wpa_supplicant for interface: %s", iface)
 
 	// Use wpa_cli to add and connect to the network
 	addNetworkCmd := exec.Command("wpa_cli", "-i", iface, "add_network")
@@ -115,4 +119,14 @@ func testWifiConnect(iface string, ssid string, password string) error {
 	}
 
 	return nil
+}
+
+func isWPASupplicantRunning(iface string) bool {
+	pingCmd := exec.Command("wpa_cli", "-i", iface, "ping")
+	output, err := pingCmd.CombinedOutput()
+	if err != nil {
+		return false
+	}
+
+	return strings.Contains(string(output), "PONG")
 }
