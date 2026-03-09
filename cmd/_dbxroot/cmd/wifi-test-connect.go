@@ -57,7 +57,7 @@ func testWifiConnect(iface string, ssid string, password string) error {
 			return err
 		}
 
-		// Wait for wpa_supplicant to setup it's things
+		// Wait for wpa_supplicant to setup its things
 		time.Sleep(1000 * time.Millisecond)
 		log.Printf("Started wpa_supplicant for interface: %s", iface)
 	} else {
