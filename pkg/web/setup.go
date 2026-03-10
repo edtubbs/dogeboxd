@@ -460,7 +460,7 @@ func (t api) initialBootstrap(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !dbxState.InitialState.HasGeneratedKey || !dbxState.InitialState.HasSetNetwork {
+	if !dbxState.InitialState.HasGeneratedKey {
 		sendErrorResponse(w, http.StatusForbidden, "System not ready to initialise")
 		return
 	}
@@ -485,12 +485,14 @@ func (t api) initialBootstrap(w http.ResponseWriter, r *http.Request) {
 
 	nixPatch := t.nix.NewPatch(log)
 
-	// This will try and connect to the pending network, and if
-	// that works, it will persist the network config to disk properly.
-	if err := t.dbx.NetworkManager.TryConnect(nixPatch); err != nil {
-		log.Errf("Error connecting to network: %v", err)
-		sendErrorResponse(w, http.StatusInternalServerError, "Error connecting to network")
-		return
+	if dbxState.InitialState.HasSetNetwork {
+		// This will try and connect to the pending network, and if
+		// that works, it will persist the network config to disk properly.
+		if err := t.dbx.NetworkManager.TryConnect(nixPatch); err != nil {
+			log.Errf("Error connecting to network: %v", err)
+			sendErrorResponse(w, http.StatusInternalServerError, "Error connecting to network")
+			return
+		}
 	}
 
 	t.nix.InitSystem(nixPatch, dbxState)

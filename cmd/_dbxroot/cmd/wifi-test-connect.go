@@ -11,6 +11,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const wpaSupplicantStartupDelay = 1000 * time.Millisecond
+
 var wifiTestCmd = &cobra.Command{
 	Use:   "wifi-test",
 	Short: "wifi-test",
@@ -40,25 +42,29 @@ func init() {
 }
 
 func testWifiConnect(iface string, ssid string, password string) error {
-	cmd := exec.Command("wpa_supplicant",
-		"-i", iface,
-		"-C", "/var/run/wpa_supplicant",
-		"-B",
-		"-f", "/var/log/wpa_supplicant.log",
-		"-D", "nl80211,wext",
-	)
+	if !isWPASupplicantRunning(iface) {
+		cmd := exec.Command("wpa_supplicant",
+			"-i", iface,
+			"-C", "/var/run/wpa_supplicant",
+			"-B",
+			"-f", "/var/log/wpa_supplicant.log",
+			"-D", "nl80211,wext",
+		)
 
-	// Start wpa_supplicant
-	err := cmd.Start()
-	if err != nil {
-		log.Printf("failed to start wpa_supplicant for interface %s, %+v", iface, err)
-		return err
+		// Start wpa_supplicant
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			log.Printf("failed to start wpa_supplicant for interface %s, %+v", iface, err)
+			log.Printf("%s", string(output))
+			return err
+		}
+
+		// Wait for wpa_supplicant to setup its things
+		time.Sleep(wpaSupplicantStartupDelay)
+		log.Printf("Started wpa_supplicant for interface: %s", iface)
+	} else {
+		log.Printf("wpa_supplicant already running for interface: %s", iface)
 	}
-
-	// Wait for wpa_supplicant to setup it's things
-	time.Sleep(1000 * time.Millisecond)
-
-	log.Printf("Started wpa_supplicant for interface: %s", iface)
 
 	// Use wpa_cli to add and connect to the network
 	addNetworkCmd := exec.Command("wpa_cli", "-i", iface, "add_network")
@@ -70,6 +76,7 @@ func testWifiConnect(iface string, ssid string, password string) error {
 	}
 
 	id := string(networkID)
+	id = strings.TrimSpace(id)
 
 	setSSIDCmd := exec.Command("wpa_cli", "-i", iface, "set_network", id, "ssid", fmt.Sprintf("\"%s\"", ssid))
 	err = setSSIDCmd.Run()
@@ -110,7 +117,18 @@ func testWifiConnect(iface string, ssid string, password string) error {
 		log.Printf("Successfully connected to WiFi network: %s", ssid)
 	} else {
 		log.Printf("Failed to connect to WiFi network: %s. Current status: %s", ssid, status)
+		return fmt.Errorf("failed to connect to WiFi network: %s", ssid)
 	}
 
 	return nil
+}
+
+func isWPASupplicantRunning(iface string) bool {
+	pingCmd := exec.Command("wpa_cli", "-i", iface, "ping")
+	output, err := pingCmd.CombinedOutput()
+	if err != nil {
+		return false
+	}
+
+	return strings.Contains(string(output), "PONG")
 }

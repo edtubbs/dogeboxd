@@ -55,6 +55,10 @@ func (t NetworkManagerLinux) GetAvailableNetworks() []dogeboxd.NetworkConnection
 		}
 
 		for _, wifiInterface := range wifiInterfaces {
+			if !isScannableWifiInterface(wifiInterface) {
+				continue
+			}
+
 			ssids, err := t.scanner.Scan(wifiInterface.Name)
 			if err != nil {
 				log.Printf("Failed to scan for Wifi networks on %s: %s", wifiInterface.Name, err)
@@ -127,6 +131,10 @@ outer:
 	}
 
 	return availableNetworkConnections
+}
+
+func isScannableWifiInterface(wifiInterface *wifi.Interface) bool {
+	return wifiInterface.Type == wifi.InterfaceTypeStation
 }
 
 func interfaceHasCarrier(name string) bool {
