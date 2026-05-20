@@ -102,7 +102,11 @@ func buildRebuildCommand(action string, setRelease string, flakePath string, ver
 		return "", nil, fmt.Errorf("invalid action: %s", action)
 	}
 
-	commandArgs := []string{action, "--flake", flakePath, "--impure"}
+	// Pass --no-update-lock-file to avoid Nix attempting to update/refresh
+	// flake inputs (e.g. dkm) over the network during early bootstrap, when
+	// the network may not yet be up. Inputs that need to change for an
+	// upgrade are supplied explicitly via --override-input below.
+	commandArgs := []string{action, "--flake", flakePath, "--impure", "--no-update-lock-file"}
 
 	for pkg, tuple := range versionInformation.Packages {
 		// Only support dogebox-wg thing for now.

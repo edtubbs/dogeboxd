@@ -41,6 +41,7 @@ func TestGetRebuildCommandUsesStagedFlakeWithUpgradeOverrides(t *testing.T) {
 		"--flake",
 		"/tmp/os-upgrade#dogeboxos-qemu-x86_64",
 		"--impure",
+		"--no-update-lock-file",
 	}
 	if len(args) < len(expectedPrefix) {
 		t.Fatalf("expected args to start with %v, got %v", expectedPrefix, args)
@@ -80,5 +81,9 @@ func TestGetRebuildCommandUsesVersionOverridesWhenNoFlakeDirIsProvided(t *testin
 		if !strings.Contains(joinedArgs, expected) {
 			t.Fatalf("expected rebuild args to contain %q, got %q", expected, joinedArgs)
 		}
+	}
+
+	if !strings.Contains(joinedArgs, "--no-update-lock-file") {
+		t.Fatalf("expected rebuild args to contain --no-update-lock-file to avoid network lock updates during bootstrap, got %q", joinedArgs)
 	}
 }
