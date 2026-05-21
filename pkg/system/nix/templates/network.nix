@@ -13,10 +13,7 @@
     {{else if .USE_WIRELESS}}
     wireless = {
       iwd = {
-        # Override the OS image default (set to false in the OS fork's
-        # nanopc-t6/base.nix) so that an explicit user-selected wireless
-        # network actually brings up iwd.
-        enable = lib.mkForce true;
+        enable = true;
       };
       interfaces = [ "{{.INTERFACE}}" ];
       networks = {
