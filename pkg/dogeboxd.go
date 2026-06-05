@@ -225,8 +225,10 @@ func (t Dogeboxd) Run(started, stopped chan bool, stop chan context.Context) err
 						}
 					case EnablePup:
 						t.Pups.FastPollPup(j.State.ID)
+						t.PupUpdateChecker.ClearCacheEntry(j.State.ID)
 					case DisablePup:
 						t.Pups.FastPollPup(j.State.ID)
+						t.PupUpdateChecker.ClearCacheEntry(j.State.ID)
 					case UpdatePupProviders:
 						t.Pups.FastPollPup(j.State.ID)
 					case UpgradePup:

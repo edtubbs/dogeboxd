@@ -762,12 +762,12 @@ func (t SystemUpdater) updateNixCache(j dogeboxd.Job) error {
 // getServiceStatus returns detailed status information about a systemd service
 func getServiceStatus(serviceName string) (status string, recentLogs []string, err error) {
 	// Get service status
-	statusCmd := exec.Command("sudo", "systemctl", "status", serviceName, "--no-pager", "--lines=0")
+	statusCmd := exec.Command("systemctl", "status", serviceName, "--no-pager", "--lines=0")
 	statusOutput, statusErr := statusCmd.CombinedOutput()
 	status = strings.TrimSpace(string(statusOutput))
 
 	// Get recent logs (last 20 lines)
-	logsCmd := exec.Command("sudo", "journalctl", "-u", serviceName, "-n", "20", "--no-pager")
+	logsCmd := exec.Command("journalctl", "-u", serviceName, "-n", "20", "--no-pager")
 	logsOutput, logsErr := logsCmd.CombinedOutput()
 	if logsErr == nil {
 		logLines := strings.Split(strings.TrimSpace(string(logsOutput)), "\n")
@@ -790,15 +790,21 @@ func waitForContainerRunning(serviceName string, timeout time.Duration, log doge
 
 	for time.Now().Before(deadline) {
 		// Check if service is active and running
-		cmd := exec.Command("sudo", "systemctl", "is-active", serviceName)
-		output, _ := cmd.CombinedOutput()
+		cmd := exec.Command("systemctl", "is-active", serviceName)
+		output, cmdErr := cmd.Output()
 		state := strings.TrimSpace(string(output))
+		if cmdErr != nil && state == "" {
+			state = "unknown"
+		}
 
 		if state == "active" {
 			// Double-check it's actually running (not just activated)
-			cmd = exec.Command("sudo", "systemctl", "show", serviceName, "--property=SubState")
-			output, _ = cmd.CombinedOutput()
+			cmd = exec.Command("systemctl", "show", serviceName, "--property=SubState")
+			output, cmdErr = cmd.Output()
 			subState := strings.TrimSpace(strings.TrimPrefix(string(output), "SubState="))
+			if cmdErr != nil && subState == "" {
+				subState = "unknown"
+			}
 
 			if subState == "running" {
 				log.Logf("Container is active and running")
