@@ -219,8 +219,11 @@ func create_t6_boot(disk string, bootMediaDisk dogeboxd.SystemDisk, partitionPre
 func create_normal_boot(disk string, partitionPrefix string) {
 	// Create partition table
 	utils.RunParted(disk, "mklabel", "gpt")
-	utils.RunParted(disk, "mkpart", "root", "ext4", "512MB", "-8GB")
-	utils.RunParted(disk, "mkpart", "swap", "linux-swap", "-8GB", "100%")
+	// Give the host a large swap area (32GB): heavy operations such as
+	// importing blockchain data run on the host, and pup containers share the
+	// host's memory and swap.
+	utils.RunParted(disk, "mkpart", "root", "ext4", "512MB", "-32GB")
+	utils.RunParted(disk, "mkpart", "swap", "linux-swap", "-32GB", "100%")
 	utils.RunParted(disk, "mkpart", "ESP", "fat32", "1MB", "512MB")
 	utils.RunParted(disk, "set", "3", "esp", "on")
 

@@ -86,6 +86,10 @@ in
 
     ephemeral = true;
 
+    # NOTE: swap is never configured in here. nspawn containers share the
+    # host kernel and its memory, so swap belongs in the host system config
+    # (see system.nix).
+
     config = { config, pkgs, lib, ... }: {
       system.stateVersion = "24.11";
 

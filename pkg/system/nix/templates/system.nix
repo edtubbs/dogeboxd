@@ -8,6 +8,19 @@
 
   time.timeZone = lib.mkForce "{{ .TIMEZONE }}";
 
+  # Swap is configured here, on the dogebox host, and never inside a pup's
+  # nspawn container: containers share the host kernel and its memory, so
+  # they cannot bring their own swap.
+  # Installs that already carry a dedicated swap partition (created by
+  # `dbx install-to-disk`) keep using that partition; anything else (eg. the
+  # ARM images, which have no swap partition) gets a host swapfile instead.
+  swapDevices = lib.mkIf (!builtins.pathExists "/dev/disk/by-label/swap") [
+    {
+      device = "/var/lib/swapfile";
+      size = 32 * 1024;
+    }
+  ];
+
   services.openssh.settings = {
     AllowUsers = [ "shibe" ];
   };
