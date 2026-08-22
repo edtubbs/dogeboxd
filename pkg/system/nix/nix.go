@@ -37,7 +37,7 @@ func NewNixManager(
 func (nm nixManager) InitSystem(patch dogeboxd.NixPatch, dbxState dogeboxd.DogeboxState) {
 	nm.UpdateIncludesFile(patch, nm.pups)
 
-	patch.UpdateSystem(dogeboxd.NixSystemTemplateValues{
+	nm.UpdateSystem(patch, dogeboxd.NixSystemTemplateValues{
 		SSH_ENABLED:     dbxState.SSH.Enabled,
 		SSH_KEYS:        dbxState.SSH.Keys,
 		SYSTEM_HOSTNAME: dbxState.Hostname,
@@ -157,6 +157,10 @@ func (nm nixManager) UpdateSystem(nixPatch dogeboxd.NixPatch, values dogeboxd.Ni
 	if values.TIMEZONE == "" {
 		values.TIMEZONE = "UTC"
 	}
+
+	// Swap is a property of the host we're running on, not of dogebox state,
+	// so resolve it here, at write time, on the box itself.
+	values.SWAP_DEVICE, values.SWAP_FILE_SIZE_MB = detectSwap()
 
 	nixPatch.UpdateSystem(values)
 }

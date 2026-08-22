@@ -141,6 +141,15 @@ Example:
 		// Generate hardware-configuration.nix
 		utils.RunCommand("nixos-generate-config", "--root", "/mnt")
 
+		// nixos-generate-config records whatever swap is active during install,
+		// which would collide with the swapDevices entry dogeboxd writes into
+		// system.nix (two units for the same device, the second failing to
+		// activate). Drop the generated entry and let system.nix own swap.
+		if err := clearGeneratedSwapDevices("/mnt/etc/nixos/hardware-configuration.nix"); err != nil {
+			log.Printf("Failed to clear generated swapDevices: %v", err)
+			os.Exit(1)
+		}
+
 		// Set an installed flag so we know not to try again.
 		utils.RunCommand("mkdir", "-p", "/mnt/opt/")
 		utils.RunCommand("touch", "/mnt/opt/dbx-installed")
@@ -198,10 +207,15 @@ func create_t6_boot(disk string, bootMediaDisk dogeboxd.SystemDisk, partitionPre
 	utils.RunParted(disk, "mkpart", "recovery", "221184s", "286719s")
 	utils.RunParted(disk, "type", "7", "E099DA71-5450-44EA-AA9F-1B771C582805")
 
-	utils.RunParted(disk, "mkpart", "rootfs", "286720s", "100%")
+	// Leave room at the end of the disk for swap. Heavy operations such as
+	// importing blockchain data run on the host, and pup containers share the
+	// host's memory and swap, so the host needs a large swap area.
+	utils.RunParted(disk, "mkpart", "rootfs", "286720s", "-32GB")
 	utils.RunParted(disk, "type", "8", "AF12D156-5D5B-4EE3-B415-8D492CA12EA9")
 	utils.RunParted(disk, "set", "8", "boot", "on")
 	utils.RunParted(disk, "set", "8", "legacy_boot", "on")
+
+	utils.RunParted(disk, "mkpart", "swap", "linux-swap", "-32GB", "100%")
 
 	// Raw copy idbloader from boot media to target disk. idbloader sits between the end of the partition table and the start of the first partition.
 	utils.RunCommand("dd", "if=/etc/uboot/idbloader.img", "of="+disk, "bs=512", "seek=64", "iflag=fullblock", "conv=notrunc,fsync", "status=progress")
@@ -210,10 +224,17 @@ func create_t6_boot(disk string, bootMediaDisk dogeboxd.SystemDisk, partitionPre
 	utils.RunCommand("dd", "if=/etc/uboot/u-boot.itb", "of="+fmt.Sprintf("%s%s1", disk, partitionPrefix), "status=progress")
 
 	rootPartition := fmt.Sprintf("%s%s8", disk, partitionPrefix)
+	swapPartition := fmt.Sprintf("%s%s9", disk, partitionPrefix)
 
 	utils.RunCommand("mkfs.ext4", "-L", "nixos", rootPartition)
 
+	// parted only names the partition. mkswap is what actually writes the swap
+	// signature and creates /dev/disk/by-label/swap, which the generated
+	// system.nix points swapDevices at.
+	utils.RunCommand("mkswap", "-L", "swap", swapPartition)
+
 	utils.RunCommand("mount", rootPartition, "/mnt")
+	utils.RunCommand("swapon", swapPartition)
 }
 
 func create_normal_boot(disk string, partitionPrefix string) {
@@ -241,4 +262,50 @@ func create_normal_boot(disk string, partitionPrefix string) {
 	utils.RunCommand("mkdir", "-p", "/mnt/boot")
 	utils.RunCommand("mount", "-o", "umask=077", espPartition, "/mnt/boot")
 	utils.RunCommand("swapon", swapPartition)
+}
+
+// clearGeneratedSwapDevices empties the swapDevices list in a
+// nixos-generate-config generated hardware-configuration.nix, so that swap is
+// configured solely by the system.nix dogeboxd writes.
+func clearGeneratedSwapDevices(path string) error {
+	contents, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("failed to read %s: %w", path, err)
+	}
+
+	updated, err := clearSwapDevicesDecl(string(contents))
+	if err != nil {
+		return err
+	}
+
+	if updated == string(contents) {
+		return nil
+	}
+
+	return os.WriteFile(path, []byte(updated), 0644)
+}
+
+// clearSwapDevicesDecl replaces a `swapDevices = ...;` declaration with an
+// empty list. It returns the input unchanged if there is no such declaration.
+func clearSwapDevicesDecl(contents string) (string, error) {
+	start := strings.Index(contents, "swapDevices")
+	if start == -1 {
+		return contents, nil
+	}
+
+	depth := 0
+	for i := start; i < len(contents); i++ {
+		switch contents[i] {
+		case '[', '{':
+			depth++
+		case ']', '}':
+			depth--
+		case ';':
+			if depth == 0 {
+				return contents[:start] + "swapDevices = [ ];" + contents[i+1:], nil
+			}
+		}
+	}
+
+	return "", fmt.Errorf("malformed swapDevices declaration: no terminating ';' found")
 }

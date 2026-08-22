@@ -340,6 +340,12 @@ type NixSystemTemplateValues struct {
 	SSH_KEYS          []DogeboxStateSSHKey
 	BINARY_CACHE_SUBS []string
 	BINARY_CACHE_KEYS []string
+	// SWAP_DEVICE is a block device holding a mkswap'd swap area, if one
+	// exists on this host. Empty if the host has no swap partition.
+	SWAP_DEVICE string
+	// SWAP_FILE_SIZE_MB is the size of the host swapfile to create, in MiB.
+	// Only used when SWAP_DEVICE is empty. Zero disables the swapfile.
+	SWAP_FILE_SIZE_MB int
 }
 
 type NixIncludesFileTemplateValues struct {

@@ -11,15 +11,28 @@
   # Swap is configured here, on the dogebox host, and never inside a pup's
   # nspawn container: containers share the host kernel and its memory, so
   # they cannot bring their own swap.
-  # Installs that already carry a dedicated swap partition (created by
-  # `dbx install-to-disk`) keep using that partition; anything else (eg. the
-  # ARM images, which have no swap partition) gets a host swapfile instead.
-  swapDevices = lib.mkIf (!builtins.pathExists "/dev/disk/by-label/swap") [
+  #
+  # Which swap we get is decided by dogeboxd when it writes this file, on the
+  # box itself, not by evaluating builtins.pathExists here: nix evaluation can
+  # happen in a pure/sandboxed context with no view of /dev, which would
+  # silently pick the wrong branch.
+  {{ if .SWAP_DEVICE }}
+  # This host has a dedicated swap partition, labelled by `mkswap -L swap`
+  # during install.
+  swapDevices = [
+    { device = "{{ .SWAP_DEVICE }}"; }
+  ];
+  {{ else if gt .SWAP_FILE_SIZE_MB 0 }}
+  # No swap partition on this host, so use a swapfile instead. The size has
+  # already been checked against the free space on / so the swap unit can
+  # actually activate.
+  swapDevices = [
     {
       device = "/var/lib/swapfile";
-      size = 32 * 1024;
+      size = {{ .SWAP_FILE_SIZE_MB }};
     }
   ];
+  {{ end }}
 
   services.openssh.settings = {
     AllowUsers = [ "shibe" ];
